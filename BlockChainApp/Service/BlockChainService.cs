@@ -1,31 +1,38 @@
 ﻿using BlockChainApp.Model;
+using BlockChainApp.Service.Interfaces;
 
 namespace BlockChainApp.Service
 {
     /// <summary>
-    /// Provides functionality to manage a simple blockchain.
+    /// Provides functionality to manage a simple in-memory blockchain.
     /// </summary>
     public class BlockChainService
     {
+        private readonly ITimeService _timeService;
         private readonly List<BlockModel> _blocks = new();
 
         /// <summary>
-        /// Gets the collection of blocks in the blockchain.
+        /// Gets a read-only collection of all blocks in the blockchain.
         /// </summary>
         public IReadOnlyCollection<BlockModel> Blocks => _blocks.AsReadOnly();
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="BlockChainService"/> class with a genesis block.
+        /// Initializes a new instance of the <see cref="BlockChainService"/> class
+        /// with a genesis block and internal time service.
         /// </summary>
         public BlockChainService()
         {
+            _timeService = new TimeService();
             _blocks.Add(new BlockModel(0, "Genesis Block"));
         }
 
         /// <summary>
-        /// Validates the entire blockchain to ensure block integrity and correct link sequence.
+        /// Validates the entire blockchain by verifying the integrity and proper linkage
+        /// of each block. Checks hashes and tampering status of all consecutive pairs of blocks.
         /// </summary>
-        /// <returns><c>true</c> if the blockchain is valid; otherwise, <c>false</c>.</returns>
+        /// <returns>
+        /// <c>true</c> if all blocks are valid and properly linked; otherwise, <c>false</c>.
+        /// </returns>
         public bool ValidateBlocks()
         {
             if (_blocks.Count <= 1)
@@ -44,10 +51,12 @@ namespace BlockChainApp.Service
         }
 
         /// <summary>
-        /// Adds a new block to the blockchain.
+        /// Adds a new block to the blockchain with the specified data.
         /// </summary>
         /// <param name="data">The data to store in the block.</param>
-        /// <returns><c>true</c> if the block was added successfully; otherwise, <c>false</c>.</returns>
+        /// <returns>
+        /// <c>true</c> if the block was successfully created and added; otherwise, <c>false</c>.
+        /// </returns>
         public bool AddBlock(string data)
         {
             if (string.IsNullOrWhiteSpace(data))
@@ -62,11 +71,14 @@ namespace BlockChainApp.Service
         }
 
         /// <summary>
-        /// Validates whether two blocks are correctly linked.
+        /// Determines whether two blocks are correctly linked and consistent in structure.
         /// </summary>
-        /// <param name="previous">The previous block.</param>
-        /// <param name="current">The current block.</param>
-        /// <returns><c>true</c> if the blocks are linked correctly; otherwise, <c>false</c>.</returns>
+        /// <param name="previous">The preceding block in the chain.</param>
+        /// <param name="current">The block to validate as the next in sequence.</param>
+        /// <returns>
+        /// <c>true</c> if the blocks form a valid link and both timestamps are not in the future;
+        /// otherwise, <c>false</c>.
+        /// </returns>
         public bool AreLinkedBlocksValid(BlockModel previous, BlockModel current)
         {
             if (previous == null || current == null || current.Previous == null)
@@ -74,8 +86,8 @@ namespace BlockChainApp.Service
 
             return previous.Index + 1 == current.Index &&
                    previous.Hash == current.Previous.Hash &&
-                   previous.CreatedOn <= DateTime.UtcNow &&
-                   current.CreatedOn <= DateTime.UtcNow;
+                   previous.CreatedOn <= _timeService.GetUtcTime() &&
+                   current.CreatedOn <= _timeService.GetUtcTime();
         }
     }
 }
