@@ -7,7 +7,7 @@ namespace BlockChainApp.Service
     /// </summary>
     public class BlockChainService
     {
-        private readonly List<BlockModel> _blocks = new List<BlockModel>();
+        private readonly List<BlockModel> _blocks = new();
 
         /// <summary>
         /// Gets the collection of blocks in the blockchain.
@@ -19,7 +19,7 @@ namespace BlockChainApp.Service
         /// </summary>
         public BlockChainService()
         {
-            _blocks.Add(new BlockModel(0, DateTime.UtcNow.ToString()));
+            _blocks.Add(new BlockModel(0, "Genesis Block"));
         }
 
         /// <summary>
@@ -28,7 +28,7 @@ namespace BlockChainApp.Service
         /// <returns><c>true</c> if the blockchain is valid; otherwise, <c>false</c>.</returns>
         public bool ValidateBlocks()
         {
-            if (_blocks.Count == 0)
+            if (_blocks.Count <= 1)
                 return true;
 
             for (int i = 1; i < _blocks.Count; i++)
@@ -36,10 +36,7 @@ namespace BlockChainApp.Service
                 var current = _blocks[i];
                 var previous = _blocks[i - 1];
 
-                if (current.IsTampered() || previous.IsTampered())
-                    return false;
-
-                if (!AreLinkedBlocksValid(previous, current))
+                if (current.IsTampered() || previous.IsTampered() || !AreLinkedBlocksValid(previous, current))
                     return false;
             }
 
@@ -53,38 +50,32 @@ namespace BlockChainApp.Service
         /// <returns><c>true</c> if the block was added successfully; otherwise, <c>false</c>.</returns>
         public bool AddBlock(string data)
         {
-            if (!string.IsNullOrEmpty(data))
-            {
-                var index = _blocks.Count;
-                var lastBlock = _blocks.Last();
-                var block = new BlockModel(index, data, lastBlock);
-                _blocks.Add(block);
-                return true;
-            }
+            if (string.IsNullOrWhiteSpace(data))
+                return false;
 
-            return false;
+            var index = _blocks.Count;
+            var lastBlock = _blocks[^1];
+            var block = new BlockModel(index, data, lastBlock);
+            _blocks.Add(block);
+
+            return true;
         }
 
         /// <summary>
-        /// Validates whether two blocks are correctly linked and not tampered with.
+        /// Validates whether two blocks are correctly linked.
         /// </summary>
         /// <param name="previous">The previous block.</param>
         /// <param name="current">The current block.</param>
-        /// <returns><c>true</c> if the blocks are linked and valid; otherwise, <c>false</c>.</returns>
+        /// <returns><c>true</c> if the blocks are linked correctly; otherwise, <c>false</c>.</returns>
         public bool AreLinkedBlocksValid(BlockModel previous, BlockModel current)
         {
-            if (previous == null || current == null)
-                return false;
-
-            if (current.Previous == null)
+            if (previous == null || current == null || current.Previous == null)
                 return false;
 
             return previous.Index + 1 == current.Index &&
                    previous.Hash == current.Previous.Hash &&
                    previous.CreatedOn <= DateTime.UtcNow &&
-                   current.CreatedOn <= DateTime.UtcNow &&
-                   !previous.IsTampered() &&
-                   !current.IsTampered();
+                   current.CreatedOn <= DateTime.UtcNow;
         }
     }
 }
